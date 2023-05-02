@@ -155,8 +155,13 @@ simulated_responses <- future_pmap_dfr(param_df,
 ```
 
 ```{r}
-ggplot(simulated_responses, aes(x = trial, y = performance))+
-  geom_smooth()
+ggplot(simulated_responses, aes(x = trial, y = performance, color = as.factor(c)))+
+  geom_smooth()+
+  theme_light()
+
+ggplot(simulated_responses, aes(x = trial, y = performance, color = as.factor(w)))+
+  geom_smooth()+
+  theme_light()
 ```
 
 
