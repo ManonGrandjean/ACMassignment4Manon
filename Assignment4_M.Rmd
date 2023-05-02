@@ -1,0 +1,111 @@
+---
+title: "Assignment4_M"
+author: "Manon Grandjean"
+date: "2023-05-02"
+output: html_document
+---
+
+```{r load packages}
+library(tidyverse)
+```
+
+Rules for session 1:
+*danger* depends on the alien having spots AND eyes on stalks (feature 1 AND feature 2 both being 1) 
+*nutrition* depends on arms being up (feature 4 being 1)
+
+```{r create 32 different stimuli}
+stimulus <- function(){
+  # create 32 different stimuli
+  aliens <- expand.grid(
+    arms_up = seq(from = 0, to = 1, by = 1),
+    legs_thick = seq(from = 0, to = 1, by = 1),
+    eyes_mad = seq(from = 0, to = 1, by = 1),
+    spots_on = seq(from = 0, to = 1, by = 1),
+    color_green = seq(from = 0, to = 1, by = 1)
+    )
+
+  #label aliens with danger and/or nutrition
+  aliens <- mutate(aliens,
+                   danger = if_else(condition = spots_on==1 & eyes_mad==1,
+                                    true = 1,
+                                    false = 0),
+                   nutritious = if_else(condition = arms_up==1,
+                                        true = 1,
+                                        false = 0))
+
+  # randomize order
+  randomized <- aliens[sample(nrow(aliens)),]
+  return(randomized)
+}
+```
+
+
+```{r}
+# Distance 
+distance <- function(vect1, vect2, w) {
+  return(sum(w * abs(vect1 - vect2)))
+}
+
+# Similarity
+similarity <- function(distance, c) {
+  return(exp(-c * distance))
+}
+
+
+
+### generative model ###
+gcm <- function(w, c, obs, cat_one, quiet = TRUE) {
+  # create an empty list to save probability of saying "1" for each trial
+  r <- c()
+  
+  ntrials <- nrow(obs)
+  
+  for (i in 1:ntrials) {
+    # If quiet is FALSE, print every ten trials
+    if (!quiet && i %% 10 == 0) {
+      print(paste("i =", i))
+    }
+    # if this is the first trial, or there any category with no exemplars seen yet, set the choice to random
+    if (i == 1 || sum(cat_one[1:(i - 1)]) == 0 || sum(cat_one[1:(i - 1)]) == (i - 1)) {
+      r <- c(r, .5)
+    } else {
+      similarities <- c()
+      # for each previously seen stimulus assess distance and similarity
+      for (e in 1:(i - 1)) {
+        sim <- similarity(distance(obs[i, ], obs[e, ], w), c)
+        similarities <- c(similarities, sim)
+      }
+      # Calculate prob of saying "1" by dividing similarity to 1 by the sum of similarity to 1 and to 2
+      numerator <- 0.5 * sum(similarities[cat_one[1:(i - 1)] == 1])
+      denominator <- 0.5 * sum(similarities[cat_one[1:(i - 1)] == 1]) + 0.5 * sum(similarities[cat_one[1:(i - 1)] == 0])
+      r <- c(r, numerator / denominator)
+    }
+  }
+
+  return(rbinom(ntrials, 1, r))
+}
+```
+
+```{r}
+session1 <- rbind(rbind(stimulus(),stimulus()), stimulus())
+
+gcm(w=0.5,
+    c=2,
+    obs = session1[,1:5],
+    cat_one = session1[,6],
+    quiet = TRUE)
+
+# the outcome of the gcm function here is then the choice of an agent of whether something is dangerous :-)
+```
+
+
+
+
+```{r load empirical data for comparison}
+empirical <- read.csv("AlienData.txt")
+
+# we only want condition 2 and session 1
+empirical <- filter(empirical,
+                    condition == 2 & session == 1 & test == 0)
+```
+
